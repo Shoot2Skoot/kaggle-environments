@@ -70,10 +70,29 @@ SYSTEM_PROMPT = (
     "string ids."
 )
 
+# Per-role rule text, pinned into every prompt's role block so it never scrolls out of the
+# truncated event log (mirrors werewolf's always-present rule_of_role).
+ROLE_RULES = {
+    "Liberal": ("You do not know anyone else's role. Win by enacting 5 Liberal policies or by having Hitler executed."),
+    "Fascist": (
+        "You secretly know your fellow Fascist(s) and Hitler (see allies below). Win by enacting 6 "
+        "Fascist policies, or by getting Hitler elected Chancellor after 3 Fascist policies are "
+        "enacted. Protect Hitler's identity and sow distrust among Liberals."
+    ),
+    "Hitler": (
+        "You are on the Fascist team but play like a Liberal to stay hidden. In 5-6 player games you "
+        "know the Fascist; in 7+ player games you do not. Your team wins if 6 Fascist policies are "
+        "enacted, or if you are elected Chancellor after 3 Fascist policies are enacted. You appear "
+        "as a Fascist if investigated, and if you are executed the Liberals win immediately."
+    ),
+}
+
+
 PROMPT_TEMPLATE = """{system_prompt}
 
 ### Your secret role
 You are {player_id}. Role: {role} (team: {team}).
+Rule of your role: {role_rule}
 {allies_line}
 
 ### Current game state
@@ -207,6 +226,7 @@ class LLMSecretHitlerAgent:
             player_id=raw.player_id,
             role=raw.role,
             team=raw.team,
+            role_rule=ROLE_RULES.get(str(raw.role), ""),
             allies_line=self._allies_line(raw),
             current_state=self.current_state(raw),
             event_log="\n".join(self._event_log[-60:]) or "None yet.",
@@ -235,7 +255,10 @@ class LLMSecretHitlerAgent:
         valid = raw.eligible_chancellor_ids or [p for p in raw.alive_players if p != raw.player_id]
         prompt = self._build_prompt(
             raw,
-            f"As President, nominate a Chancellor. Eligible candidates: {valid}.",
+            f"As President, nominate a Chancellor from: {valid}. The table then votes on the two of "
+            f"you as a government; if it passes, you and this Chancellor jointly decide the next "
+            f"policy. Note: after 3 Fascist policies are enacted, electing Hitler as Chancellor "
+            f"instantly wins the game for the Fascists.",
             NominateChancellorAction.schema_for_player(),
             json.dumps({"reasoning": "...", "target_id": valid[0] if valid else "player_x"}),
         )
@@ -246,7 +269,8 @@ class LLMSecretHitlerAgent:
     def _h_bid(self, raw):
         prompt = self._build_prompt(
             raw,
-            "Bid 0-3 for a chance to speak about the proposed government. Higher bids win the floor.",
+            "Bid 0-3 to win the floor and speak before the vote. Higher bids win and only the winner "
+            "speaks this round, but bidding high draws the table's attention to you.",
             BidAction.schema_for_player(),
             json.dumps({"reasoning": "...", "amount": 2}),
         )
@@ -260,7 +284,8 @@ class LLMSecretHitlerAgent:
     def _h_chat(self, raw):
         prompt = self._build_prompt(
             raw,
-            "You won the floor. Persuade the table about the proposed government.",
+            "You won the floor — address the table before the vote. Everything you say is public and "
+            "will be remembered and used by others to infer your role; you may speak truthfully or deceive.",
             ChatAction.schema_for_player(),
             json.dumps({"reasoning": "...", "message": "I trust this government because..."}),
         )
@@ -270,8 +295,12 @@ class LLMSecretHitlerAgent:
     def _h_vote(self, raw):
         prompt = self._build_prompt(
             raw,
-            f"Vote Ja or Nein on the government (President {raw.president_id}, Chancellor "
-            f"{raw.nominee_chancellor_id}).",
+            f"Vote Ja or Nein on this government (President {raw.president_id}, Chancellor "
+            f"{raw.nominee_chancellor_id}). If it passes, the President draws 3 policies and the "
+            f"Chancellor enacts 1. If it fails, the election tracker advances — after 3 failed "
+            f"governments in a row the top policy is force-enacted with no powers (chaos). Note: once "
+            f"3 Fascist policies are enacted, electing Hitler as Chancellor instantly loses the game "
+            f"for the Liberals.",
             VoteAction.schema_for_player(),
             json.dumps({"reasoning": "...", "vote": "Ja"}),
         )
@@ -289,8 +318,11 @@ class LLMSecretHitlerAgent:
         hand = list(raw.policy_hand or [])
         prompt = self._build_prompt(
             raw,
-            f"You drew 3 policies ({self._render_hand(hand)}). Discard exactly one by color "
-            f"('Liberal' or 'Fascist'); the other two pass to the Chancellor.",
+            f"You drew 3 policies ({self._render_hand(hand)}). Discard exactly ONE; the other two go "
+            f"to the Chancellor, who will enact one of them (they cannot see which you discarded). The "
+            f"policy enacted this round will be one of the two you pass — so if you pass two of the "
+            f"same color, that color is enacted and you cannot prevent it. Others cannot see your draw, "
+            f"so consider what you will claim. Discard one by color ('Liberal' or 'Fascist').",
             DiscardPolicyAction.schema_for_player(),
             json.dumps({"reasoning": "...", "discard": str(hand[0]) if hand else "Fascist"}),
         )
@@ -303,8 +335,9 @@ class LLMSecretHitlerAgent:
         veto_note = ' You may instead set "veto": true to propose vetoing this agenda.' if raw.veto_available else ""
         prompt = self._build_prompt(
             raw,
-            f"You received 2 policies ({self._render_hand(hand)}). Discard one by color; the "
-            f"other is enacted.{veto_note}",
+            f"You received 2 policies ({self._render_hand(hand)}). You will enact ONE and discard the "
+            f"other. If both are the same color, that color is enacted — you have no choice. Others "
+            f"cannot see the discarded policy or what the President drew.{veto_note} Discard one by color.",
             DiscardPolicyAction.schema_for_chancellor(),
             json.dumps({"reasoning": "...", "discard": str(hand[0]) if hand else "Fascist", "veto": False}),
         )
@@ -324,8 +357,10 @@ class LLMSecretHitlerAgent:
     def _h_veto_consent(self, raw):
         prompt = self._build_prompt(
             raw,
-            f"Chancellor {raw.chancellor_id} proposes to veto the agenda. Consent? "
-            "(consent: true discards both policies and advances the election tracker.)",
+            f"Chancellor {raw.chancellor_id} proposes to veto this agenda (possible now that 5 Fascist "
+            f"policies are enacted). If you consent, both policies are discarded and no policy is "
+            f"enacted — but this counts as a failed government and advances the election tracker toward "
+            f"chaos. If you refuse, the Chancellor must enact one of the two policies.",
             VetoConsentAction.schema_for_player(),
             json.dumps({"reasoning": "...", "consent": True}),
         )
@@ -343,8 +378,9 @@ class LLMSecretHitlerAgent:
         if power == Power.POLICY_PEEK:
             prompt = self._build_prompt(
                 raw,
-                "You used Policy Peek and saw the top three policies (in your private events). "
-                "Acknowledge to continue.",
+                "You used Policy Peek and privately saw the top three policies that will be drawn next "
+                "(in your events). No one else knows what you saw — you may use this knowledge later or "
+                "misrepresent it. Acknowledge to continue.",
                 PolicyPeekAckAction.schema_for_player(),
                 json.dumps({"reasoning": "..."}),
             )
@@ -352,20 +388,67 @@ class LLMSecretHitlerAgent:
             return PolicyPeekAckAction(**self._args(raw), reasoning=data.get("reasoning"))
 
         names = {
-            Power.INVESTIGATE: ("investigate a player's party membership", InvestigateAction),
-            Power.SPECIAL_ELECTION: ("pick the next Presidential candidate", SpecialElectionAction),
-            Power.EXECUTION: ("execute a player", ExecutionAction),
+            Power.INVESTIGATE: (
+                "Use your power to investigate a player's party membership. You will privately learn "
+                "whether the target is a Liberal or a Fascist (Hitler appears as Fascist). Only you see "
+                "the result — you may report it truthfully to the table or lie about it.",
+                InvestigateAction,
+            ),
+            Power.SPECIAL_ELECTION: (
+                "Use your power to choose the next Presidential candidate, out of the normal rotation. "
+                "You are handing that player presidential power for the next round; the usual rotation "
+                "resumes afterward.",
+                SpecialElectionAction,
+            ),
+            Power.EXECUTION: (
+                "Use your power to execute a player, removing them permanently. If you execute Hitler, "
+                "the Liberals win the game instantly; if you execute a Liberal, you weaken your own "
+                "side. No one learns the executed player's role.",
+                ExecutionAction,
+            ),
         }
         desc, action_cls = names[power]
         prompt = self._build_prompt(
             raw,
-            f"Use your power to {desc}. Valid targets: {valid}.",
+            f"{desc} Valid targets: {valid}.",
             action_cls.schema_for_player(),
             json.dumps({"reasoning": "...", "target_id": valid[0] if valid else "player_x"}),
         )
         data = self.query_parse(prompt, "target_id")
         target = self._match_target(data.get("target_id"), valid) or valid[0]
         return action_cls(**self._args(raw), target_id=target, reasoning=data.get("reasoning"))
+
+    # ------------------------------------------------------------------ #
+    # Self-memory
+    # ------------------------------------------------------------------ #
+    def _self_note(self, action) -> str:
+        """A compact record of this agent's own action + reasoning, re-injected into the event
+        log so later turns can stay consistent with earlier claims (mirrors werewolf)."""
+        try:
+            d = action.serialize()
+        except Exception:  # noqa: BLE001
+            d = {}
+        name = type(action).__name__
+        if name == "DiscardPolicyAction":
+            label = "You proposed a veto." if d.get("veto") else f"You discarded a {d.get('discard', '?')} policy."
+        else:
+            label = {
+                "NominateChancellorAction": f"You nominated {d.get('target_id', '?')} as Chancellor.",
+                "VoteAction": f"You voted {str(d.get('vote', '?')).split('.')[-1]}.",
+                "ChatAction": f'You told the table: "{str(d.get("message", ""))[:200]}"',
+                "BidAction": f"You bid {d.get('amount', '?')} for the floor.",
+                "VetoConsentAction": f"You {'consented to' if d.get('consent') else 'refused'} the veto.",
+                "InvestigateAction": f"You investigated {d.get('target_id', '?')}.",
+                "SpecialElectionAction": f"You called a special election for {d.get('target_id', '?')}.",
+                "ExecutionAction": f"You executed {d.get('target_id', '?')}.",
+                "PolicyPeekAckAction": "You reviewed the top three policies (Policy Peek).",
+                "NoOpAction": "You took no action.",
+            }.get(name, f"You acted ({name}).")
+        reasoning = (getattr(action, "reasoning", None) or d.get("reasoning") or "").strip()
+        note = f"[YOUR ACTION] {label}"
+        if reasoning:
+            note += f" (your reasoning: {reasoning[:300]})"
+        return note
 
     # ------------------------------------------------------------------ #
     # Entry point
@@ -385,6 +468,8 @@ class LLMSecretHitlerAgent:
         except Exception as exc:  # noqa: BLE001
             logger.error(f"{self._model_name} failed to act in {phase}: {exc}")
             action = NoOpAction(**self._args(raw), reasoning="Fell back to NoOp after repeated failures.")
+        # Re-inject our own decision + reasoning so future turns can stay self-consistent.
+        self._event_log.append(f"[R{raw.round_number}] {self._self_note(action)}")
         return action.serialize()
 
 

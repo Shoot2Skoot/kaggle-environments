@@ -1,5 +1,6 @@
 import { createReplayVisualizer, ReplayAdapter } from '@kaggle-environments/core';
 import { renderer } from './renderer';
+import { secretHitlerTransformer, getStepLabel, getStepDescription } from './transformer';
 import './style.css';
 
 const app = document.getElementById('app');
@@ -17,5 +18,8 @@ createReplayVisualizer(
     gameName: 'secret_hitler',
     renderer: renderer as any,
     ui: 'inline',
+    transformer: (replay: any) => secretHitlerTransformer(replay),
+    getStepLabel: (step: any) => getStepLabel(step),
+    getStepDescription: (step: any) => getStepDescription(step),
   })
 );

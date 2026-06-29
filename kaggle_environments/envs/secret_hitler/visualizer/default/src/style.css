@@ -1,197 +1,372 @@
 :root {
-  --lib: #2f6fb0;
-  --fas: #b03a2e;
-  --ink: #2b2b2b;
-  --paper: #f5f1e6;
-}
-
-body {
-  margin: 0;
-  font-family: "Segoe UI", system-ui, sans-serif;
-  color: var(--ink);
-  background: var(--paper);
+  --bg: #14171c;
+  --panel: #1d2128;
+  --panel2: #252b34;
+  --edge: #353c47;
+  --text: #e6e9ee;
+  --muted: #9aa4b2;
+  --lib: #2f78c4;
+  --lib-dim: #1c3d5e;
+  --fas: #c0392b;
+  --fas-dim: #5e2420;
+  --hitler: #0b0d10;
+  --gold: #f0b323;
 }
 
 .sh-root {
-  max-width: 920px;
+  max-width: 1180px;
   margin: 0 auto;
-  padding: 16px;
+  padding: 14px 18px;
+  color: var(--text);
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: var(--bg);
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
-.sh-header {
+.sh-top {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  border-bottom: 2px solid var(--ink);
-  padding-bottom: 6px;
+  border-bottom: 1px solid var(--edge);
+  padding-bottom: 8px;
 }
 .sh-title {
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 800;
-  letter-spacing: 1px;
+  letter-spacing: 3px;
+  color: #fff;
 }
 .sh-sub {
-  font-size: 14px;
-  opacity: 0.7;
+  font-size: 13px;
+  color: var(--muted);
 }
 
+/* ---- board ---- */
 .sh-board {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  padding: 12px 14px;
 }
 .sh-trackrow {
   display: flex;
   align-items: center;
   gap: 10px;
 }
-.sh-tracklabel {
-  width: 130px;
+.sh-tl {
+  width: 132px;
   font-weight: 700;
-  font-size: 13px;
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 .sh-track {
   display: flex;
   gap: 6px;
 }
 .sh-slot {
-  width: 54px;
-  height: 40px;
-  border: 2px solid var(--ink);
-  border-radius: 6px;
+  width: 50px;
+  height: 34px;
+  border-radius: 5px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #fff;
-  position: relative;
+  background: var(--panel2);
+  border: 1px solid var(--edge);
+}
+.sh-slot.lib {
+  border-color: var(--lib-dim);
+}
+.sh-slot.fas {
+  border-color: var(--fas-dim);
 }
 .sh-slot.lib.filled {
   background: var(--lib);
+  border-color: var(--lib);
 }
 .sh-slot.fas.filled {
   background: var(--fas);
+  border-color: var(--fas);
 }
 .sh-slot.flash {
-  box-shadow: 0 0 0 3px gold;
+  box-shadow:
+    0 0 0 2px var(--gold),
+    0 0 12px var(--gold);
 }
 .sh-power {
-  font-size: 9px;
-  text-transform: uppercase;
-  color: #555;
-  text-align: center;
-  line-height: 1.1;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--muted);
 }
 .sh-slot.filled .sh-power {
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.9);
 }
-
 .sh-tracker {
   display: flex;
   gap: 6px;
 }
 .sh-pip {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  border: 2px solid var(--ink);
-  background: #fff;
+  background: var(--panel2);
+  border: 1px solid var(--edge);
 }
 .sh-pip.on {
-  background: #e0a800;
+  background: var(--gold);
+  border-color: var(--gold);
 }
 .sh-veto {
   font-size: 11px;
   font-weight: 700;
   color: var(--fas);
 }
+.sh-deck {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--muted);
+}
 
-.sh-players {
+/* ---- main: ring + panel ---- */
+.sh-main {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  gap: 16px;
+  align-items: stretch;
 }
-.sh-player {
-  min-width: 78px;
-  border: 2px solid var(--ink);
+.sh-ringwrap {
+  position: relative;
+  flex: 0 0 auto;
+  background: radial-gradient(circle at center, var(--panel) 0%, var(--bg) 75%);
+  border: 1px solid var(--edge);
+  border-radius: 12px;
+}
+.sh-svg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.sh-pcard {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 92px;
+  padding: 6px 4px 7px;
   border-radius: 8px;
-  padding: 6px 8px;
   text-align: center;
-  background: #fff;
+  background: var(--panel2);
+  border: 2px solid var(--edge);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
-.sh-player.pres {
-  background: #bdeeff;
-  transform: scale(1.05);
+.sh-pcard.team-fascist {
+  border-color: var(--fas-dim);
+  background: linear-gradient(180deg, #2a1d1b, #211a19);
 }
-.sh-player.chan {
-  background: #d6f5d6;
+.sh-pcard.team-liberal {
+  border-color: var(--lib-dim);
+  background: linear-gradient(180deg, #1a2230, #181d27);
 }
-.sh-player.dead {
-  opacity: 0.4;
+.sh-pcard.role-hitler {
+  border-color: #000;
+  background: linear-gradient(180deg, #2a1416, #14080a);
+}
+.sh-pcard.actor {
+  box-shadow:
+    0 0 0 2px var(--gold),
+    0 0 16px rgba(240, 179, 35, 0.6);
+  transform: translate(-50%, -50%) scale(1.08);
+  z-index: 3;
+}
+.sh-pcard.dead {
+  opacity: 0.38;
+  filter: grayscale(0.6);
+}
+.sh-pcard.dead .sh-pid {
   text-decoration: line-through;
 }
-.sh-marker {
+.sh-pmark {
+  font-size: 9px;
   font-weight: 800;
-  height: 16px;
-  color: #444;
+  letter-spacing: 0.5px;
+  color: var(--gold);
+  margin-bottom: 1px;
+}
+.sh-pcard.pres .sh-pmark {
+  color: var(--gold);
+}
+.sh-pcard.chan .sh-pmark {
+  color: #6fd08a;
 }
 .sh-pid {
-  font-weight: 700;
   font-size: 13px;
-}
-.sh-role {
-  margin-top: 3px;
-  font-size: 11px;
   font-weight: 700;
-  border-radius: 4px;
-  padding: 1px 4px;
+  color: var(--text);
 }
-.sh-role.liberal {
+.sh-prole {
+  margin-top: 3px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  border-radius: 3px;
+  padding: 1px 0;
+}
+.role-liberal .sh-prole,
+.sh-prole.role-liberal {
   background: var(--lib);
   color: #fff;
 }
-.sh-role.fascist {
+.role-fascist .sh-prole {
   background: var(--fas);
   color: #fff;
 }
-.sh-role.hitler {
-  background: #111;
-  color: #fff;
-}
-
-.sh-status {
-  font-size: 15px;
-  padding: 6px 0;
-  border-top: 1px dashed #999;
-}
-.sh-winner {
-  font-weight: 800;
-}
-.sh-winner.liberal {
-  color: var(--lib);
-}
-.sh-winner.fascist {
+.role-hitler .sh-prole {
+  background: #000;
   color: var(--fas);
+  border: 1px solid var(--fas);
+}
+.sh-pmodel {
+  margin-top: 3px;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
 }
 
-.sh-log {
+/* ---- panel ---- */
+.sh-panel {
+  flex: 1 1 auto;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 12px;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  font-size: 13px;
-  max-height: 260px;
-  overflow-y: auto;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  padding: 8px;
-  background: #fff;
+  gap: 10px;
+  min-width: 0;
 }
-.sh-logline.policy {
+.sh-phasechip {
+  align-self: flex-start;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--gold);
+  background: rgba(240, 179, 35, 0.12);
+  border: 1px solid rgba(240, 179, 35, 0.4);
+  padding: 3px 9px;
+  border-radius: 20px;
+}
+.sh-headline {
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.sh-speech {
+  font-size: 14px;
+  font-style: italic;
+  color: #d7deea;
+  border-left: 3px solid var(--lib);
+  padding: 4px 0 4px 12px;
+}
+.sh-detail {
+  font-size: 13px;
+  color: var(--muted);
+}
+.sh-reasonbox {
+  margin-top: 2px;
+  background: var(--panel2);
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  padding: 9px 11px;
+}
+.sh-reasonhdr {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  margin-bottom: 5px;
+}
+.sh-rtag {
+  padding: 0 4px;
+  border-radius: 3px;
+}
+.sh-rtag.role-liberal {
+  background: var(--lib);
+  color: #fff;
+}
+.sh-rtag.role-fascist {
+  background: var(--fas);
+  color: #fff;
+}
+.sh-rtag.role-hitler {
+  background: #000;
+  color: var(--fas);
+}
+.sh-reasontext {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #cdd4df;
+}
+.sh-endbox {
+  margin-top: auto;
+  font-size: 15px;
+  padding: 10px 12px;
+  background: var(--panel2);
+  border-radius: 8px;
+  border: 1px solid var(--edge);
+}
+.team-fascist {
+  color: var(--fas);
+}
+.team-liberal {
+  color: #5b9bd6;
+}
+
+/* ---- log ---- */
+.sh-log {
+  max-height: 150px;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12.5px;
+}
+.sh-logline {
+  padding: 2px 4px;
+  border-radius: 4px;
+  color: var(--muted);
+}
+.sh-logline.cur {
+  background: rgba(240, 179, 35, 0.14);
+  color: var(--text);
+  font-weight: 600;
+}
+.sh-logline.policy,
+.sh-logline.vote_result {
+  color: #cdd4df;
+}
+.sh-logline.game_end {
+  color: var(--fas);
   font-weight: 700;
 }
-.sh-logline.end {
-  font-weight: 800;
-  color: var(--fas);
+.sh-logr {
+  display: inline-block;
+  min-width: 26px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #6b7280;
 }
