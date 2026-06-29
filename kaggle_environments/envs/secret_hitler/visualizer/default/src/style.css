@@ -1,0 +1,197 @@
+:root {
+  --lib: #2f6fb0;
+  --fas: #b03a2e;
+  --ink: #2b2b2b;
+  --paper: #f5f1e6;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+}
+
+.sh-root {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sh-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: 6px;
+}
+.sh-title {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+.sh-sub {
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+.sh-board {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sh-trackrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sh-tracklabel {
+  width: 130px;
+  font-weight: 700;
+  font-size: 13px;
+}
+.sh-track {
+  display: flex;
+  gap: 6px;
+}
+.sh-slot {
+  width: 54px;
+  height: 40px;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  position: relative;
+}
+.sh-slot.lib.filled {
+  background: var(--lib);
+}
+.sh-slot.fas.filled {
+  background: var(--fas);
+}
+.sh-slot.flash {
+  box-shadow: 0 0 0 3px gold;
+}
+.sh-power {
+  font-size: 9px;
+  text-transform: uppercase;
+  color: #555;
+  text-align: center;
+  line-height: 1.1;
+}
+.sh-slot.filled .sh-power {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.sh-tracker {
+  display: flex;
+  gap: 6px;
+}
+.sh-pip {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  background: #fff;
+}
+.sh-pip.on {
+  background: #e0a800;
+}
+.sh-veto {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--fas);
+}
+
+.sh-players {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.sh-player {
+  min-width: 78px;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  padding: 6px 8px;
+  text-align: center;
+  background: #fff;
+}
+.sh-player.pres {
+  background: #bdeeff;
+  transform: scale(1.05);
+}
+.sh-player.chan {
+  background: #d6f5d6;
+}
+.sh-player.dead {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+.sh-marker {
+  font-weight: 800;
+  height: 16px;
+  color: #444;
+}
+.sh-pid {
+  font-weight: 700;
+  font-size: 13px;
+}
+.sh-role {
+  margin-top: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+.sh-role.liberal {
+  background: var(--lib);
+  color: #fff;
+}
+.sh-role.fascist {
+  background: var(--fas);
+  color: #fff;
+}
+.sh-role.hitler {
+  background: #111;
+  color: #fff;
+}
+
+.sh-status {
+  font-size: 15px;
+  padding: 6px 0;
+  border-top: 1px dashed #999;
+}
+.sh-winner {
+  font-weight: 800;
+}
+.sh-winner.liberal {
+  color: var(--lib);
+}
+.sh-winner.fascist {
+  color: var(--fas);
+}
+
+.sh-log {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 13px;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 8px;
+  background: #fff;
+}
+.sh-logline.policy {
+  font-weight: 700;
+}
+.sh-logline.end {
+  font-weight: 800;
+  color: var(--fas);
+}
