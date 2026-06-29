@@ -6,7 +6,6 @@ from typing import Callable, Dict
 
 from .game.actions import (
     Action,
-    BidAction,
     ChatAction,
     DiscardPolicyAction,
     ExecutionAction,
@@ -49,9 +48,7 @@ def _act(raw, pick):
     if phase == DetailedPhase.ELECTION_NOMINATION_AWAIT:
         targets = raw.eligible_chancellor_ids or [p for p in raw.alive_players if p != raw.player_id]
         return NominateChancellorAction(**args, target_id=pick(targets), reasoning="auto")
-    if phase == DetailedPhase.ELECTION_BIDDING_AWAIT:
-        return BidAction(**args, amount=pick([0, 1, 2, 3]), reasoning="auto")
-    if phase == DetailedPhase.ELECTION_CHAT_AWAIT:
+    if phase in (DetailedPhase.ELECTION_CHAT_AWAIT, DetailedPhase.LEGISLATIVE_DEBRIEF_AWAIT):
         return ChatAction(**args, message=pick(["I support this.", "I am suspicious.", "Pass."]), reasoning="auto")
     if phase == DetailedPhase.ELECTION_VOTE_AWAIT:
         return VoteAction(**args, vote=pick([Vote.JA, Vote.NEIN]), reasoning="auto")

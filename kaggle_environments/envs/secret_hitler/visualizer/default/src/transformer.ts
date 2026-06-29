@@ -132,6 +132,9 @@ export function secretHitlerTransformer(replay: any): any {
   let chancellor: string | null = null;
   let nominee: string | null = null;
   let round = 1;
+  // Speeches after a policy is enacted (and before the next nomination) are the post-policy
+  // debrief; speeches after a nomination are the pre-vote discussion.
+  let inDebrief = false;
   const frames: SHFrame[] = [];
 
   const phaseFor = (kind: string): string =>
@@ -140,6 +143,7 @@ export function secretHitlerTransformer(replay: any): any {
       nomination: 'Nomination',
       bid: 'Discussion — Bidding',
       chat: 'Discussion',
+      debrief: 'Debrief',
       vote: 'Election — Voting',
       vote_result: 'Election Result',
       discard: 'Legislative Session',
@@ -219,6 +223,7 @@ export function secretHitlerTransformer(replay: any): any {
         break;
       }
       case 'NominationDataEntry': {
+        inDebrief = false;
         president = d.actor_id;
         nominee = d.target_id;
         chancellor = null;
@@ -245,10 +250,10 @@ export function secretHitlerTransformer(replay: any): any {
           .filter((m: string) => m !== d.actor_id)
           .map((m: string) => ({ id: m, rel: 'mention' as const }));
         emit({
-          kind: 'chat',
+          kind: inDebrief ? 'debrief' : 'chat',
           actor: d.actor_id,
           targets: mentioned,
-          headline: `${d.actor_id} speaks`,
+          headline: inDebrief ? `${d.actor_id} debriefs` : `${d.actor_id} speaks`,
           message: d.message ?? null,
           reasoning: d.reasoning ?? null,
         });
@@ -299,6 +304,7 @@ export function secretHitlerTransformer(replay: any): any {
         break;
       }
       case 'PolicyEnactedDataEntry': {
+        inDebrief = true;
         board.liberal = d.liberal_policies ?? board.liberal;
         board.fascist = d.fascist_policies ?? board.fascist;
         const govTargets: Target[] = [];
@@ -385,6 +391,7 @@ export function getStepLabel(step: any): string {
     nomination: 'Nominate',
     bid: 'Bid',
     chat: 'Speak',
+    debrief: 'Debrief',
     vote: 'Vote',
     vote_result: 'Result',
     discard: 'Legislate',

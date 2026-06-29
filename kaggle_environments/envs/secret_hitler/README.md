@@ -68,7 +68,7 @@ python kaggle_environments/envs/secret_hitler/test_llm_game.py --model gemini/ge
 | `seed` | 123 | Deterministic role / id / deck shuffling |
 | `randomize_roles` | false | Shuffle configured roles among players |
 | `randomize_ids` | false | Shuffle player ids |
-| `discussion_protocol` | `TurnByTurnBiddingDiscussion` | `{name, params}` for the debate phase |
+| `discussion_protocol` | `RoundRobinDiscussion` (`{rounds: 2}`) | `{name, params}` for the round-robin debate; players speak in turn starting with the President |
 | `episodeSteps` | 2000 | Step cap (a no-winner cap-out scores all players 0) |
 
 ## Tests

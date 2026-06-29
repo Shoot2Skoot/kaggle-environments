@@ -86,7 +86,9 @@ class TestPrompt:
         monkeypatch.setattr(a, "query", lambda prompt: captured.setdefault("p", prompt) or fenced({"target_id": "p1"}))
         a(_obs())
         p = captured["p"]
-        assert "Secret Hitler" in p and "Liberal" in p and "liberal_policies" in p
+        # rules block, role, and the readable game-state section are all present
+        assert "Secret Hitler" in p and "Liberal" in p and "Policies enacted so far" in p
+        assert "Complete rules of Secret Hitler" in p
 
     def test_discard_prompt_shows_hand_multiplicity(self, monkeypatch):
         captured = {}

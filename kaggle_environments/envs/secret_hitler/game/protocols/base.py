@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List, Sequence
+from typing import Optional, Sequence
 
 
 class DiscussionProtocol(ABC):
-    """Drives the debate that precedes the election vote.
+    """Drives a round of structured debate (round-robin speaking).
 
-    The engine alternates bidding ticks (all alive players bid for the floor) and chat ticks
-    (the winning bidder speaks), until the protocol reports it is finished.
+    The engine calls ``begin`` once, then repeatedly asks ``next_speaker`` (one speaker per
+    tick) and ``record_speech`` until ``is_finished`` is true.
     """
 
     @property
@@ -19,26 +19,18 @@ class DiscussionProtocol(ABC):
         """Human-readable description of the protocol, shown to players."""
 
     @abstractmethod
-    def begin(self, alive_ids: Sequence[str]) -> None:
-        """Reset state for a fresh discussion among ``alive_ids``."""
+    def begin(self, alive_ids: Sequence[str], leader_id: Optional[str] = None) -> None:
+        """Start a fresh discussion among ``alive_ids``, with ``leader_id`` (e.g. the President)
+        speaking first each round."""
 
     @abstractmethod
-    def bidders(self, alive_ids: Sequence[str]) -> List[str]:
-        """Players who should bid this tick (empty => discussion over)."""
+    def next_speaker(self) -> Optional[str]:
+        """The next player to speak, or ``None`` when the discussion is over."""
 
     @abstractmethod
-    def resolve_bids(self, bids: Dict[str, int]) -> List[str]:
-        """Record this tick's bids and return the winning speaker(s)."""
-
-    @abstractmethod
-    def record_speech(self, speaker_ids: Sequence[str]) -> None:
-        """Mark that the given speakers have spoken (advances the turn counter)."""
+    def record_speech(self, speaker_id: str) -> None:
+        """Mark that ``speaker_id`` has spoken, advancing the schedule."""
 
     @abstractmethod
     def is_finished(self) -> bool:
         """Whether the discussion has ended."""
-
-    @property
-    @abstractmethod
-    def max_bid(self) -> int:
-        """The maximum legal bid amount."""

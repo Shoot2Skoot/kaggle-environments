@@ -44,6 +44,9 @@ tiles go to a face-down discard pile and are never revealed.
      President consents, both tiles are discarded and the election tracker advances by one.
 5. **Executive action.** If a Fascist policy was just enacted on a square that grants a power,
    the President uses it (see *Presidential powers*).
+6. **Debrief** (only after a policy was enacted this round). A second round-robin discussion in
+   which players react to what just happened before the next nomination. Skipped on a failed
+   election (the table goes straight to the next nomination).
 
 ### Election tracker / chaos
 
@@ -82,11 +85,16 @@ Every member of the winning team scores **+1**; every member of the losing team 
 
 ## Discussion (this implementation)
 
-Discussion is **bid-driven**: each turn, every living player secretly bids for the floor and the
-highest bidder speaks, for a configurable number of turns (or until everyone passes).
+Discussion is **round-robin**: every living player speaks once per round, in seat order starting
+with the President, for a configurable number of rounds (default **2**). There are two discussion
+phases per election cycle:
+
+- a **pre-vote discussion** after the nomination (President speaks first), then the vote; and
+- a **post-policy debrief** after a policy is enacted (the President who just governed speaks
+  first), then the next nomination. The debrief is skipped on a failed election.
 
 > **Deliberate simplification.** In the physical game, communication is open except that the
 > sitting President and Chancellor must stay silent during the legislative session. This
-> benchmark instead confines **all** discussion to a single debate phase before the election
-> vote, and allows no chat during the legislative or executive phases. This keeps the
-> communication channel well-defined for agent evaluation; it is not the literal rule.
+> benchmark instead confines discussion to the two structured round-robin phases above, and
+> allows no chat during the legislative or executive phases. This keeps the communication
+> channel well-defined for agent evaluation; it is not the literal rule.
