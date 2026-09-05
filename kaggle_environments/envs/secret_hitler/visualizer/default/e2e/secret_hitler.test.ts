@@ -6,9 +6,11 @@ test.beforeEach(async ({ page }) => {
 
 test('renders the board', async ({ page }) => {
   await expect(page.locator('.renderer-container')).toBeVisible();
-  await expect(page.locator('.sh-title')).toHaveText(/Secret Hitler/);
+  await expect(page.locator('.sh-title')).toHaveText(/secret hitler/i);
   await expect(page.locator('.sh-track').first()).toBeVisible();
-  await expect(page.locator('.sh-players .sh-player').first()).toBeVisible();
+  // god-mode player ring: one card per player, with a revealed role
+  await expect(page.locator('.sh-pcard').first()).toBeVisible();
+  await expect(page.locator('.sh-pcard .sh-prole').first()).toBeVisible();
 });
 
 test('displays state at mid-game', async ({ page }) => {
@@ -28,5 +30,6 @@ test('shows a winner at the final step', async ({ page }) => {
   const maxValue = await slider.getAttribute('max');
   await slider.fill(maxValue || '0');
   await page.waitForTimeout(200);
-  await expect(page.locator('.sh-winner')).toHaveText(/Liberal|Fascist/);
+  // end-game frame surfaces the winner in the reasoning panel's end box
+  await expect(page.locator('.sh-endbox')).toContainText(/win/i);
 });

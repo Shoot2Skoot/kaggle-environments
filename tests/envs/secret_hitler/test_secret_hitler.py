@@ -18,7 +18,7 @@ from kaggle_environments.envs.secret_hitler.game.consts import (
 )
 from kaggle_environments.envs.secret_hitler.game.deck import PolicyDeck
 from kaggle_environments.envs.secret_hitler.game.engine import Moderator
-from kaggle_environments.envs.secret_hitler.game.protocols.chat import TurnByTurnBiddingDiscussion
+from kaggle_environments.envs.secret_hitler.game.protocols.chat import RoundRobinDiscussion
 from kaggle_environments.envs.secret_hitler.game.roles import (
     assign_role_counts,
     create_players_from_agents_config,
@@ -40,11 +40,11 @@ def agents_config(n):
     return [{"id": f"p{i}", "role": roles[i], "agent_id": "random"} for i in range(n)]
 
 
-def build_moderator(n, seed=1, marker=0, max_turns=1):
+def build_moderator(n, seed=1, marker=0, rounds=1):
     players = create_players_from_agents_config(agents_config(n))
     state = GameState(players=players)
     state.deck = PolicyDeck(seed=seed)
-    mod = Moderator(state=state, discussion=TurnByTurnBiddingDiscussion(max_turns=max_turns))
+    mod = Moderator(state=state, discussion=RoundRobinDiscussion(rounds=rounds))
     mod._marker = marker
     mod.advance({})  # run setup -> first nomination
     return mod
@@ -67,9 +67,7 @@ def _scripted_action(mod, pid, *, vote=Vote.JA, discard_pref=None, nominate=None
         eligible = mod.eligible_chancellors()
         target = nominate if (nominate in eligible) else eligible[0]
         return A.NominateChancellorAction(**args, target_id=target)
-    if phase == DetailedPhase.ELECTION_BIDDING_AWAIT:
-        return A.BidAction(**args, amount=0)
-    if phase == DetailedPhase.ELECTION_CHAT_AWAIT:
+    if phase in (DetailedPhase.ELECTION_CHAT_AWAIT, DetailedPhase.LEGISLATIVE_DEBRIEF_AWAIT):
         return A.ChatAction(**args, message="x")
     if phase == DetailedPhase.ELECTION_VOTE_AWAIT:
         return A.VoteAction(**args, vote=vote)
@@ -339,16 +337,17 @@ def test_chaos_after_three_failed_elections():
     assert mod.state.last_president_id is None and mod.state.last_chancellor_id is None  # term limits forgotten
 
 
-def test_no_chat_during_legislative_or_executive():
-    # Discussion (chat/bid) events must only occur in the Election phase.
-    mod = build_moderator(7, seed=6, max_turns=2)
+def test_discussion_only_in_discussion_phases():
+    # Discussion (speech) events occur only in the two round-robin phases: the pre-vote
+    # discussion (ELECTION_CHAT_AWAIT) and the post-policy debrief (LEGISLATIVE_DEBRIEF_AWAIT).
+    mod = build_moderator(7, seed=6, rounds=2)
     drive(mod, lambda m, pid: _scripted_action(m, pid, vote=Vote.JA, discard_pref=PolicyColor.FASCIST))
     for events in mod.state.history.values():
         for e in events:
-            if e.event_name in (EventName.DISCUSSION, EventName.BID_ACTION, EventName.BID_RESULT):
+            if e.event_name == EventName.DISCUSSION:
                 assert e.detailed_phase in (
-                    DetailedPhase.ELECTION_BIDDING_AWAIT,
                     DetailedPhase.ELECTION_CHAT_AWAIT,
+                    DetailedPhase.LEGISLATIVE_DEBRIEF_AWAIT,
                 ), e.detailed_phase
 
 

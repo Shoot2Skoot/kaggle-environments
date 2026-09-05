@@ -1,13 +1,13 @@
 from typing import Any, Dict, Optional
 
 from .base import DiscussionProtocol
-from .chat import TurnByTurnBiddingDiscussion
+from .chat import RoundRobinDiscussion
 
 PROTOCOL_REGISTRY = {
-    "TurnByTurnBiddingDiscussion": TurnByTurnBiddingDiscussion,
+    "RoundRobinDiscussion": RoundRobinDiscussion,
 }
 
-DEFAULT_DISCUSSION_PROTOCOL_NAME = "TurnByTurnBiddingDiscussion"
+DEFAULT_DISCUSSION_PROTOCOL_NAME = "RoundRobinDiscussion"
 
 
 def create_protocol(config: Optional[Dict[str, Any]], default_name: str = None) -> DiscussionProtocol:

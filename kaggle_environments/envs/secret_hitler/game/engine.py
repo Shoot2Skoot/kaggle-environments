@@ -4,7 +4,6 @@ from typing import Dict, List, Optional, Type
 
 from .actions import (
     Action,
-    BidAction,
     ChatAction,
     DiscardPolicyAction,
     ExecutionAction,
@@ -29,8 +28,6 @@ from .consts import (
 )
 from .protocols.base import DiscussionProtocol
 from .records import (
-    BidDataEntry,
-    BidResultDataEntry,
     BoardSnapshotDataEntry,
     ChaosDataEntry,
     ChatDataEntry,
@@ -44,7 +41,6 @@ from .records import (
     NominationDataEntry,
     PolicyEnactedDataEntry,
     PowerUsedDataEntry,
-    RequestBidDataEntry,
     RequestChatDataEntry,
     RequestDiscardDataEntry,
     RequestNominationDataEntry,
@@ -111,14 +107,14 @@ class Moderator(BaseModerator):
         self._handlers = {
             DetailedPhase.GAME_START: self._h_game_start,
             DetailedPhase.ELECTION_NOMINATION_AWAIT: self._h_nomination,
-            DetailedPhase.ELECTION_BIDDING_AWAIT: self._h_bidding,
-            DetailedPhase.ELECTION_CHAT_AWAIT: self._h_chat,
+            DetailedPhase.ELECTION_CHAT_AWAIT: self._h_discussion,
             DetailedPhase.ELECTION_VOTE_AWAIT: self._h_vote,
             DetailedPhase.ELECTION_CONCLUDE: self._h_election_conclude,
             DetailedPhase.LEGISLATIVE_PRESIDENT_AWAIT: self._h_president_discard,
             DetailedPhase.LEGISLATIVE_CHANCELLOR_AWAIT: self._h_chancellor_discard,
             DetailedPhase.LEGISLATIVE_VETO_CONSENT_AWAIT: self._h_veto_consent,
             DetailedPhase.LEGISLATIVE_CONCLUDE: self._h_legislative_conclude,
+            DetailedPhase.LEGISLATIVE_DEBRIEF_AWAIT: self._h_debrief,
             DetailedPhase.EXECUTIVE_POWER_AWAIT: self._h_power,
             DetailedPhase.EXECUTIVE_CONCLUDE: self._h_executive_conclude,
         }
@@ -346,92 +342,65 @@ class Moderator(BaseModerator):
                 action=action,
             ),
         )
-        self.discussion.begin(state.alive_player_ids())
-        return DetailedPhase.ELECTION_BIDDING_AWAIT
-
-    def _h_bidding(self, actions):
-        state = self._state
-        if not self._pending():
-            if self.discussion.is_finished():
-                return DetailedPhase.ELECTION_VOTE_AWAIT
-            bidders = self.discussion.bidders(state.alive_player_ids())
-            if not bidders:
-                return DetailedPhase.ELECTION_VOTE_AWAIT
-            for pid in bidders:
-                self.request_action(
-                    BidAction,
-                    pid,
-                    prompt=f"Bid 0-{self.discussion.max_bid} for the floor to speak about the proposed government.",
-                    data=RequestBidDataEntry(
-                        max_bid=self.discussion.max_bid,
-                        action_json_schema=json.dumps(BidAction.schema_for_player()),
-                    ),
-                    event_name=EventName.BID_REQUEST,
-                )
-            return DetailedPhase.ELECTION_BIDDING_AWAIT
-
-        self._queue.clear()
-        bids: Dict[PlayerID, int] = {}
-        for pid in state.alive_player_ids():
-            action = actions.get(pid)
-            amount = action.amount if isinstance(action, BidAction) else 0
-            amount = max(0, min(amount, self.discussion.max_bid))
-            bids[pid] = amount
-            if isinstance(action, BidAction):
-                state.push_event(
-                    description=f"{pid} placed a bid.",
-                    event_name=EventName.BID_ACTION,
-                    public=False,
-                    visible_to=[pid],
-                    source=pid,
-                    data=BidDataEntry(actor_id=pid, bid_amount=amount, reasoning=action.reasoning, action=action),
-                )
-        speakers = self.discussion.resolve_bids(bids)
-        state.push_event(
-            description=f"Bidding result: speakers={speakers}.",
-            event_name=EventName.BID_RESULT,
-            public=True,
-            data=BidResultDataEntry(winner_player_ids=speakers, bid_overview=bids),
-        )
-        self._next_speakers = speakers
-        if not speakers:
-            return DetailedPhase.ELECTION_VOTE_AWAIT
+        self.discussion.begin(state.alive_player_ids(), leader_id=state.president_id)
         return DetailedPhase.ELECTION_CHAT_AWAIT
 
-    def _h_chat(self, actions):
+    def _begin_debrief(self):
+        """Start a round-robin debrief among living players (President speaks first), to discuss
+        the round just concluded before the next nomination."""
         state = self._state
+        self.discussion.begin(state.alive_player_ids(), leader_id=state.president_id)
+        return DetailedPhase.LEGISLATIVE_DEBRIEF_AWAIT
+
+    def _run_discussion(self, actions, when, phase):
+        """Drive one round-robin discussion: one speaker per request/collect cycle until the
+        protocol is finished. ``when`` is 'election' (pre-vote) or 'debrief' (post-policy)."""
+        state = self._state
+        if when == "election":
+            prompt = "Address the table about the proposed government before the vote is cast."
+        else:
+            prompt = "Debrief: discuss what just happened this round (the election and any policy enacted)."
+
         if not self._pending():
-            speakers = getattr(self, "_next_speakers", [])
-            if not speakers:
-                return DetailedPhase.ELECTION_VOTE_AWAIT
-            for pid in speakers:
-                self.request_action(
-                    ChatAction,
-                    pid,
-                    prompt="You won the floor. Address the table about the proposed government.",
-                    data=RequestChatDataEntry(action_json_schema=json.dumps(ChatAction.schema_for_player())),
-                    event_name=EventName.CHAT_REQUEST,
-                )
-            return DetailedPhase.ELECTION_CHAT_AWAIT
+            speaker = self.discussion.next_speaker()
+            if speaker is None:
+                return self._finish_discussion(when)
+            self.request_action(
+                ChatAction,
+                speaker,
+                prompt=prompt,
+                data=RequestChatDataEntry(action_json_schema=json.dumps(ChatAction.schema_for_player())),
+                event_name=EventName.CHAT_REQUEST,
+            )
+            return phase
 
         self._queue.clear()
-        speakers = getattr(self, "_next_speakers", [])
-        for pid in speakers:
-            action = actions.get(pid)
+        speaker = self.discussion.next_speaker()
+        if speaker is not None:
+            action = actions.get(speaker)
             message = action.message if isinstance(action, ChatAction) else ""
             state.push_event(
-                description=f"{pid}: {message}",
+                description=f"{speaker}: {message}",
                 event_name=EventName.DISCUSSION,
                 public=True,
-                source=pid,
+                source=speaker,
                 data=ChatDataEntry(
-                    actor_id=pid, message=message, reasoning=getattr(action, "reasoning", None), action=action
+                    actor_id=speaker, message=message, reasoning=getattr(action, "reasoning", None), action=action
                 ),
             )
-        self.discussion.record_speech(speakers)
+            self.discussion.record_speech(speaker)
         if self.discussion.is_finished():
-            return DetailedPhase.ELECTION_VOTE_AWAIT
-        return DetailedPhase.ELECTION_BIDDING_AWAIT
+            return self._finish_discussion(when)
+        return phase
+
+    def _finish_discussion(self, when):
+        return DetailedPhase.ELECTION_VOTE_AWAIT if when == "election" else self._start_new_round()
+
+    def _h_discussion(self, actions):
+        return self._run_discussion(actions, when="election", phase=DetailedPhase.ELECTION_CHAT_AWAIT)
+
+    def _h_debrief(self, actions):
+        return self._run_discussion(actions, when="debrief", phase=DetailedPhase.LEGISLATIVE_DEBRIEF_AWAIT)
 
     def _h_vote(self, actions):
         state = self._state
@@ -658,7 +627,11 @@ class Moderator(BaseModerator):
         state.last_president_id = state.president_id
         state.last_chancellor_id = state.chancellor_id
         state.push_event(
-            description=f"A {color} policy was enacted.",
+            description=(
+                f"The government of President {state.president_id} and Chancellor {state.chancellor_id} "
+                f"enacted a {color} policy. The policy board is now {state.board.liberal_track} Liberal "
+                f"and {state.board.fascist_track} Fascist."
+            ),
             event_name=EventName.POLICY_ENACTED,
             public=True,
             data=PolicyEnactedDataEntry(
@@ -677,7 +650,7 @@ class Moderator(BaseModerator):
             if power is not None:
                 self._pending_power = power
                 return DetailedPhase.EXECUTIVE_POWER_AWAIT
-        return self._start_new_round()
+        return self._begin_debrief()
 
     # ------------------------------------------------------------------ #
     # Executive
@@ -711,7 +684,7 @@ class Moderator(BaseModerator):
     def _h_executive_conclude(self, _actions):
         if self.is_game_over():
             return DetailedPhase.GAME_OVER
-        return self._start_new_round()
+        return self._begin_debrief()
 
     def _power_request(self, power: Power):
         state = self._state
@@ -857,7 +830,10 @@ class Moderator(BaseModerator):
             data=ChaosDataEntry(policy_color=tile),
         )
         state.push_event(
-            description=f"A {tile} policy was enacted by chaos.",
+            description=(
+                f"A {tile} policy was force-enacted by chaos (no government). The policy board is now "
+                f"{state.board.liberal_track} Liberal and {state.board.fascist_track} Fascist."
+            ),
             event_name=EventName.POLICY_ENACTED,
             public=True,
             data=PolicyEnactedDataEntry(
